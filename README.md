@@ -1,5 +1,5 @@
 # HT_servo_driver
-ROS package and driver for HT servo using CAN bus
+ROS package and driver for HAITAI servo using CAN bus
 
 &nbsp;
 > ### **Thanks to:**
