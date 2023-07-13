@@ -12,7 +12,7 @@ namespace CAN
 
 #define ADDRESS_MASK 0X0F
 
-struct CanFrameStamp
+struct FrameStamp
 {
     can_frame frame;
     ros::Time stamp;
@@ -21,16 +21,19 @@ struct CanFrameStamp
 class Receiver
 {
     public:
-        virtual void reception_callback(const CAN::CanFrameStamp& frame_stamp) = 0;
+        virtual void reception_callback(const CAN::FrameStamp& frame_stamp) = 0;
 };
 
 class CanBus
 {
     public:
 
-        CanBus(const std::string& bus_name)
+        CanBus(const std::string& bus_name, int thread_priority)
         {
-            
+            // Initialize device at can_device, false for no loop back.
+            while (!socket_can.open(bus_name, std::bind(&CanBus::frame_callback, this, std::placeholders::_1), thread_priority) && ros::ok())
+                ros::Duration(.5).sleep();
+            ROS_INFO("Successfully connected to %s.", bus_name.c_str());
         }
         ~CanBus()
         {
@@ -67,9 +70,9 @@ class CanBus
         {
             std::lock_guard<std::mutex> guard(mutex_);
             uint8_t device_id = frame.can_id & ADDRESS_MASK;
-            if (device_id < device_list.size())
+            if (device_id <= device_list.size())
             {
-                CanFrameStamp can_frame_stamp{ .frame = frame, .stamp = ros::Time::now() };
+                FrameStamp can_frame_stamp{ .frame = frame, .stamp = ros::Time::now() };
                 device_list[device_id - 1]->reception_callback(can_frame_stamp);  // 调用对应地址的设备的回调函数
             }
         }
