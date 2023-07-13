@@ -2,6 +2,9 @@
 #include <sys/ioctl.h>
 #include "ros/ros.h"
 
+namespace CAN
+{
+
 SocketCAN::~SocketCAN()
 {
     if (this->is_open())
@@ -130,5 +133,5 @@ bool SocketCAN::start_receiver_thread(int thread_priority)
     return true;
 }
 
-
+}  // namespace CAN
 

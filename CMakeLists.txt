@@ -135,7 +135,8 @@ include_directories(
 ## The recommended prefix ensures that target names across packages don't collide
 add_executable(${PROJECT_NAME}_node 
   src/main.cpp
-  src/socketcan.cpp)
+  src/socketcan.cpp
+  src/ht_servo.cpp)
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the

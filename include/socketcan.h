@@ -6,6 +6,9 @@
 #include <pthread.h>
 #include <functional>
 
+namespace CAN
+{
+
 class SocketCAN
 {
     public:
@@ -61,6 +64,8 @@ class SocketCAN
         pthread_t receiver_thread_id_{};
     
 };
+
+} // namespace CAN
 
 #endif
 
