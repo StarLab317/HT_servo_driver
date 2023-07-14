@@ -8,14 +8,18 @@ enum class HT_Command
 {
     POSITION = 0X2F,
     STATE = 0X40,
+    SET_POWER = 0X53,
+    SET_VELOCITY = 0X54,
 };
 
 class HT_Servo: protected CAN::Receiver
 {
     public:
 
-        HT_Servo(int _id, std::shared_ptr<CAN::CanBus> _can_bus);
+        HT_Servo(int _id, int _gear_ratio, std::shared_ptr<CAN::CanBus> _can_bus);
         void request(HT_Command command);
+        void set_power(int16_t power);
+        void set_velocity(int16_t rpm);
 
         double get_angle(void)
         {
@@ -25,6 +29,7 @@ class HT_Servo: protected CAN::Receiver
     private:
 
         const int id;
+        const int gear_ratio;
         const std::shared_ptr<CAN::CanBus> can_bus;
 
         double angle = 0;

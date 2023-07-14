@@ -11,6 +11,7 @@ namespace CAN
 {
 
 #define ADDRESS_MASK 0X0F
+#define ADDRESS_MAX 0XFFFF
 
 struct FrameStamp
 {
@@ -21,7 +22,7 @@ struct FrameStamp
 class Receiver
 {
     public:
-        virtual void reception_callback(const CAN::FrameStamp& frame_stamp) = 0;
+        virtual void reception_callback(const FrameStamp& frame_stamp) = 0;
 };
 
 class CanBus
@@ -40,8 +41,23 @@ class CanBus
             device_list.clear();
         }
 
-        void add_device(Receiver* device)
+        void add_device(int device_id, Receiver* device)
         {
+            int list_size = device_list.size();
+            int map_size = device_list_map.size();
+            if (device_id - map_size == 1)
+            {
+                device_list_map.push_back(list_size);
+            }
+            else if (device_id - map_size > 1)
+            {
+                device_list_map.resize(device_id);
+                device_list_map[device_id - 1] = list_size;
+            }
+            else
+            {
+                device_list_map[device_id - 1] = list_size;
+            }
             device_list.push_back(device);
         }
 
@@ -73,12 +89,13 @@ class CanBus
             if (device_id <= device_list.size())
             {
                 FrameStamp can_frame_stamp{ .frame = frame, .stamp = ros::Time::now() };
-                device_list[device_id - 1]->reception_callback(can_frame_stamp);  // 调用对应地址的设备的回调函数
+                device_list[device_list_map[device_id - 1]]->reception_callback(can_frame_stamp);  // 调用对应地址的设备的回调函数
             }
         }
 
         SocketCAN socket_can;
         mutable std::mutex mutex_;
+        std::vector<uint16_t> device_list_map;
         std::vector<Receiver*> device_list;
 };
 

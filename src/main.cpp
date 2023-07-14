@@ -20,11 +20,11 @@ int main(int argc, char **argv)
 
     auto can_bus = std::make_shared<CAN::CanBus>("can0", 50);
 
-    HT_Servo test1(1, can_bus);
+    HT_Servo test1(1, 10, can_bus);
 
     // can_interface.open("can0", std::bind(&empty), 1);
 
-    ros::Rate loop_rate(10);
+    ros::Rate loop_rate(30);
 
     while (ros::ok())
     {
