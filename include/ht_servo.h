@@ -25,6 +25,10 @@ class HT_Servo: protected CAN::Receiver
         {
             return angle;
         }
+        double get_velocity(void)
+        {
+            return angular_velocity;
+        }
 
     private:
 

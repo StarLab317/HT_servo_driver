@@ -39,7 +39,7 @@ void HT_Servo::reception_callback(const CAN::FrameStamp& frame_stamp)
                  frame_stamp.frame.data[4] << 16 |
                  frame_stamp.frame.data[3] << 8 |
                  frame_stamp.frame.data[2]) * 360.0 / 16384.0 / gear_ratio;
-        angular_velocity = (frame_stamp.frame.data[7] << 8 | frame_stamp.frame.data[6]) * 0.1;
+        angular_velocity = static_cast<int16_t>(frame_stamp.frame.data[7] << 8 | frame_stamp.frame.data[6]) * 0.1;
     }
 }
 
