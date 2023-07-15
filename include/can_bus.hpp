@@ -86,11 +86,8 @@ class CanBus
         {
             std::lock_guard<std::mutex> guard(mutex_);
             uint8_t device_id = frame.can_id & ADDRESS_MASK;
-            if (device_id <= device_list.size())
-            {
-                FrameStamp can_frame_stamp{ .frame = frame, .stamp = ros::Time::now() };
-                device_list[device_list_map[device_id - 1]]->reception_callback(can_frame_stamp);  // 调用对应地址的设备的回调函数
-            }
+            FrameStamp can_frame_stamp{ .frame = frame, .stamp = ros::Time::now() };
+            device_list[device_list_map[device_id - 1]]->reception_callback(can_frame_stamp);  // 调用对应地址的设备的回调函数
         }
 
         SocketCAN socket_can;
