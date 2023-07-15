@@ -26,14 +26,14 @@ int main(int argc, char **argv)
     HT_Servo test1(1, 10, can_bus);
 
     PID_Controller servo_1_pid(0.1, 0.1, 0, -5000, 5000);
-    FirstOrderFilter servo_1_velocity_filter(0.2);
+    ButterworthFilter servo_1_velocity_filter(50.0, 2.0);
 
     // can_interface.open("can0", std::bind(&empty), 1);
 
     ros::Publisher robot_state_pub = ros_node.advertise<trajectory_msgs::JointTrajectory>("robot_state", 1);
     ros::Publisher rqt_data_pub = ros_node.advertise<geometry_msgs::Vector3>("for_rqt_plot", 1);
 
-    ros::Rate loop_rate(30);
+    ros::Rate loop_rate(50);
 
     while (ros::ok())
     {
