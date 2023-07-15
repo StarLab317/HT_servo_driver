@@ -18,8 +18,8 @@ class HT_Servo: protected CAN::Receiver
 
         HT_Servo(int _id, int _gear_ratio, std::shared_ptr<CAN::CanBus> _can_bus);
         void request(HT_Command command);
-        void set_power(int16_t power);
-        void set_velocity(int16_t rpm);
+        void set_power(int16_t power, uint16_t wait_response_ms = 0);
+        void set_velocity(int16_t rpm, uint16_t wait_response_ms = 0);
 
         double get_angle(void)
         {
@@ -36,6 +36,8 @@ class HT_Servo: protected CAN::Receiver
         const int gear_ratio;
         const std::shared_ptr<CAN::CanBus> can_bus;
 
+        bool is_responded = false;
+
         double angle = 0;
         double angular_velocity = 0;
         double voltage = 0;
@@ -44,6 +46,7 @@ class HT_Servo: protected CAN::Receiver
         uint8_t fault_code = 0;
         uint8_t operational_state = 0;
 
+        bool wait_response_block(uint16_t wait_response_ms);
         virtual void reception_callback(const CAN::FrameStamp& frame_stamp);
 };
 
