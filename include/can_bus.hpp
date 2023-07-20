@@ -4,6 +4,7 @@
 #include <vector>
 #include <memory>
 #include <mutex>
+#include <chrono>
 #include "socketcan.h"
 #include "ros/ros.h"
 
@@ -15,8 +16,9 @@ namespace CAN
 
 struct FrameStamp
 {
-    can_frame frame;
-    ros::Time stamp;
+    public:
+        can_frame frame;
+        std::chrono::steady_clock::time_point stamp;
 };
 
 class Receiver
@@ -86,7 +88,7 @@ class CanBus
         {
             std::lock_guard<std::mutex> guard(mutex_);
             uint8_t device_id = frame.can_id & ADDRESS_MASK;
-            FrameStamp can_frame_stamp{ .frame = frame, .stamp = ros::Time::now() };
+            FrameStamp can_frame_stamp{ .frame = frame, .stamp = std::chrono::steady_clock::now() };
             device_list[device_list_map[device_id - 1]]->reception_callback(can_frame_stamp);  // 调用对应地址的设备的回调函数
         }
 

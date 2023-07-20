@@ -26,10 +26,11 @@ int main(int argc, char **argv)
 
     auto can_bus = std::make_shared<CAN::CanBus>("can0", 50);
 
-    HT_Servo test1(1, 10, can_bus);
+    HT_Servo test1(4, 10, can_bus);
 
     PID_Controller servo_1_pid(3, 1.5, 0.0, -5000, 5000);
-    ButterworthFilter servo_1_velocity_filter(50.0, 2.0);
+    ButterworthFilter servo_1_velocity_filter(50.0, 5.0);
+    ButterworthFilter servo_1_diff_velocity_filter(50.0, 5.0);
 
     // can_interface.open("can0", std::bind(&empty), 1);
 
@@ -44,6 +45,7 @@ int main(int argc, char **argv)
         state.points.push_back(trajectory_msgs::JointTrajectoryPoint());
         state.points[0].positions.push_back(test1.get_angle());
         double velocity_filter = servo_1_velocity_filter.step(test1.get_velocity());
+        double diff_velocity_filter = servo_1_diff_velocity_filter.step(test1.get_differential_velocity());
         state.points[0].velocities.push_back(velocity_filter);
         robot_state_pub.publish(state);
 
@@ -52,12 +54,12 @@ int main(int argc, char **argv)
         double control_target = servo_1_pid.step(5 - velocity_filter);
 
         geometry_msgs::Vector3 for_rqt_data;
-        for_rqt_data.x = velocity_filter * 100.0;
-        for_rqt_data.y = control_target;
+        for_rqt_data.x = velocity_filter;
+        for_rqt_data.y = diff_velocity_filter;
         rqt_data_pub.publish(for_rqt_data);
 
         auto start = std::chrono::steady_clock::now();
-        test1.set_power(0, 500);
+        test1.request(HT_Command::POSITION, 500);
         auto end = std::chrono::steady_clock::now();
 
         cout << "Elapsed time in microseconds: "

@@ -7,11 +7,14 @@ HT_Servo::HT_Servo(int _id, int _gear_ratio, std::shared_ptr<CAN::CanBus> _can_b
     can_bus->add_device(id, this);
 }
 
-void HT_Servo::request(HT_Command command)
+void HT_Servo::request(HT_Command command, uint16_t wait_response_ms)
 {
     uint32_t can_id = static_cast<uint32_t>(command)<<4 | id;
     uint8_t data[0];
     can_bus->send(can_id, 0, data);
+
+    if (wait_response_ms != 0)
+        wait_response_block(wait_response_ms);
 }
 
 void HT_Servo::set_power(int16_t power, uint16_t wait_response_ms)
@@ -65,7 +68,14 @@ void HT_Servo::reception_callback(const CAN::FrameStamp& frame_stamp)
                  frame_stamp.frame.data[3] << 8 |
                  frame_stamp.frame.data[2]) * 360.0 / 16384.0 / gear_ratio;
         // 单位 rad/s
-        angular_velocity = static_cast<int16_t>(frame_stamp.frame.data[7] << 8 | frame_stamp.frame.data[6]) * 0.1 * 0.10472;
+        angular_velocity = static_cast<int16_t>(frame_stamp.frame.data[7] << 8 | frame_stamp.frame.data[6]) * 0.1 * RPM2RADS;
+
+        // 后向差分计算速度
+        current_position.value = angle;
+        current_position.stamp = frame_stamp.stamp;
+        double duration_s = std::chrono::duration_cast<std::chrono::nanoseconds>(current_position.stamp - last_position.stamp).count() / 1e9;
+        diff_angular_velocity = (current_position.value - last_position.value) / duration_s * DEG2RAD * 10;
+        last_position = current_position;
 
         is_responded = true;
     }
