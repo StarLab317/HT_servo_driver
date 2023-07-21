@@ -4,6 +4,7 @@
 #include <memory>
 #include <chrono>
 #include "can_bus.hpp"
+#include "pid_controller.hpp"
 
 constexpr double DEG2RAD = 0.017453293;
 constexpr double RPM2RADS = 0.104719755;
@@ -28,10 +29,11 @@ class HT_Servo: protected CAN::Receiver
 {
     public:
 
-        HT_Servo(int _id, int _gear_ratio, std::shared_ptr<CAN::CanBus> _can_bus);
+        HT_Servo(int _id, double _gear_ratio, double _angle_range, std::shared_ptr<CAN::CanBus> _can_bus);
+        void position_calibration(std::shared_ptr<ros::Rate> loop_rate);
         void request(HT_Command command, uint16_t wait_response_ms = 0);
         void set_power(int16_t power, uint16_t wait_response_ms = 0);
-        void set_velocity(int16_t rpm, uint16_t wait_response_ms = 0);
+        void set_velocity(double rads, uint16_t wait_response_ms = 0);
 
         double get_angle(void)
         {
@@ -46,11 +48,19 @@ class HT_Servo: protected CAN::Receiver
             return diff_angular_velocity;
         }
 
+        PID_Controller pid = PID_Controller(3, 1.5, 0.0, -5000, 5000);
+        ButterworthFilter velocity_filter = ButterworthFilter(50.0, 10.0);
+
     private:
 
         const int id;
-        const int gear_ratio;
+        const double gear_ratio;
+        const double angle_range;
         const std::shared_ptr<CAN::CanBus> can_bus;
+
+        double angle_constraint_lower = 0;
+        double angle_constraint_upper = 0;
+        double angle_zero_bias = 0;
 
         bool is_responded = false;
 

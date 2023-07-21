@@ -19,16 +19,19 @@ class PID_Controller
             // ANTI-Windup
             if (integral_val < output_min)
             {
+                is_saturated_flag = true;
                 if (input_bias > 0)
                     integral_val += input_bias;
             }
             else if (integral_val > output_max)
             {
+                is_saturated_flag = true;
                 if (input_bias < 0)
                     integral_val += input_bias;
             }
             else
             {
+                is_saturated_flag = false;
                 integral_val += input_bias;
             }
             
@@ -45,6 +48,11 @@ class PID_Controller
             return output;
         }
 
+        bool is_saturated(void)
+        {
+            return is_saturated_flag;
+        }
+
     private:
         double Kp = 0;
         double Ki = 0;
@@ -54,6 +62,8 @@ class PID_Controller
 
         double integral_val = 0;
         double last_bias = 0;
+
+        bool is_saturated_flag = false;
 
         FirstOrderFilter differential_filter;
 };
