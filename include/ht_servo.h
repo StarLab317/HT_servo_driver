@@ -11,6 +11,7 @@ constexpr double RPM2RADS = 0.104719755;
 
 enum class HT_Command
 {
+    SET_ORIGIN = 0X21,
     POSITION = 0X2F,
     STATE = 0X40,
     SET_DISABLE = 0X50,
@@ -29,15 +30,17 @@ class HT_Servo: protected CAN::Receiver
 {
     public:
 
-        HT_Servo(int _id, double _gear_ratio, double _angle_range, std::shared_ptr<CAN::CanBus> _can_bus);
-        void position_calibration(std::shared_ptr<ros::Rate> loop_rate);
+        HT_Servo(int _id, double _gear_ratio, double _position_range, std::shared_ptr<CAN::CanBus> _can_bus);
+        void position_calibration(std::shared_ptr<ros::Rate> loop_rate, std::shared_ptr<ros::Publisher> publisher);
+        bool set_position_origin(void);
         void request(HT_Command command, uint16_t wait_response_ms = 0);
         void set_power(int16_t power, uint16_t wait_response_ms = 0);
         void set_velocity(double rads, uint16_t wait_response_ms = 0);
+        void set_position(double degree, uint16_t wait_response_ms = 0);
 
-        double get_angle(void)
+        double get_position(void)
         {
-            return angle;
+            return original_position - position_zero_bias;
         }
         double get_velocity(void)
         {
@@ -48,23 +51,24 @@ class HT_Servo: protected CAN::Receiver
             return diff_angular_velocity;
         }
 
-        PID_Controller pid = PID_Controller(3, 1.5, 0.0, -5000, 5000);
-        ButterworthFilter velocity_filter = ButterworthFilter(50.0, 10.0);
+        PID_Controller pid = PID_Controller(200, 20, 0, -2000, 2000);
+        ButterworthFilter velocity_filter = ButterworthFilter(50.0, 15.0);
 
     private:
 
         const int id;
         const double gear_ratio;
-        const double angle_range;
+        const double position_range;
         const std::shared_ptr<CAN::CanBus> can_bus;
 
-        double angle_constraint_lower = 0;
-        double angle_constraint_upper = 0;
-        double angle_zero_bias = 0;
+        double position_constraint_lower = 0;
+        double position_constraint_upper = 0;
+        double position_zero_bias = 0;
 
         bool is_responded = false;
+        bool is_origin_set_flag = false;
 
-        double angle = 0;
+        double original_position = 0;
         double angular_velocity = 0;
         double diff_angular_velocity = 0;
         double voltage = 0;

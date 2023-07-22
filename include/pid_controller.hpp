@@ -21,24 +21,24 @@ class PID_Controller
             {
                 is_saturated_flag = true;
                 if (input_bias > 0)
-                    integral_val += input_bias;
+                    integral_val += input_bias * Ki;
             }
             else if (integral_val > output_max)
             {
                 is_saturated_flag = true;
                 if (input_bias < 0)
-                    integral_val += input_bias;
+                    integral_val += input_bias * Ki;
             }
             else
             {
                 is_saturated_flag = false;
-                integral_val += input_bias;
+                integral_val += input_bias * Ki;
             }
             
             differential_val = differential_filter.step(input_bias - last_bias);
             last_bias = input_bias;
 
-            output = Kp * input_bias + Ki * integral_val + Kd * differential_val;
+            output = Kp * input_bias + integral_val + Kd * differential_val;
 
             if (output < output_min)
                 output = output_min;
@@ -51,6 +51,25 @@ class PID_Controller
         bool is_saturated(void)
         {
             return is_saturated_flag;
+        }
+
+        void set_parameter(double _Kp, double _Ki, double _Kd, double _output_min, double _output_max,
+            double _differential_filter_alpha = 1.0)
+        {
+            Kp = _Kp;
+            Ki = _Ki;
+            Kd = _Kd;
+            output_min = _output_min;
+            output_max = _output_max;
+            differential_filter.set_filter_alpha(_differential_filter_alpha);
+        }
+
+        void reset(void)
+        {
+            integral_val = 0;
+            last_bias = 0;
+            is_saturated_flag = false;
+            differential_filter.reset();
         }
 
     private:

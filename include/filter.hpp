@@ -15,6 +15,16 @@ class FirstOrderFilter
             return integral_val;
         }
 
+        void set_filter_alpha(double _filter_alpha)
+        {
+            filter_alpha = _filter_alpha;
+        }
+
+        void reset(void)
+        {
+            integral_val = 0;
+        }
+
     private:
         double integral_val;
         double filter_alpha;
