@@ -2,13 +2,13 @@
 #include <chrono>
 #include "geometry_msgs/Quaternion.h"
 
-HT_Servo::HT_Servo(int _id, double _gear_ratio, double _position_range, std::shared_ptr<CAN::CanBus> _can_bus):
-    id(_id), gear_ratio(_gear_ratio), position_range(_position_range), can_bus(_can_bus)
+HT_Servo::HT_Servo(int _id, double _gear_ratio, double _position_range, std::shared_ptr<CAN::CanBus> _can_bus, bool inverse):
+    id(_id), gear_ratio(_gear_ratio), position_range(_position_range), can_bus(_can_bus), inverse_factor(inverse? -1 : 1)
 {
     can_bus->add_device(id, this);
 }
 
-void HT_Servo::position_calibration(std::shared_ptr<ros::Rate> loop_rate, std::shared_ptr<ros::Publisher> publisher)
+void HT_Servo::position_calibration(std::shared_ptr<ros::Rate> loop_rate, std::shared_ptr<ros::Publisher> publisher, int direction)
 {
     constexpr uint8_t SEARCH_ZERO = 0;
     constexpr uint8_t DATA_SAMPE = 1;
@@ -18,6 +18,10 @@ void HT_Servo::position_calibration(std::shared_ptr<ros::Rate> loop_rate, std::s
     double position_avg = 0;
     geometry_msgs::Quaternion pub_data;
 
+    double direction_factor = -1;
+    if (direction >= 0)
+        direction_factor = 1;
+
     request(HT_Command::POSITION, 500);
     loop_rate->sleep();
 
@@ -26,7 +30,7 @@ void HT_Servo::position_calibration(std::shared_ptr<ros::Rate> loop_rate, std::s
     {
         if (SEARCH_ZERO == state)
         {
-            control_val = pid.step(0.2 - diff_angular_velocity);
+            control_val = pid.step(direction_factor * CALIBRATION_VELOCITY - diff_angular_velocity);
             if (pid.is_saturated())
             {
                 // while (!set_position_origin())
@@ -53,6 +57,8 @@ void HT_Servo::position_calibration(std::shared_ptr<ros::Rate> loop_rate, std::s
             if (count >= 40)
             {
                 position_zero_bias = position_avg / static_cast<double>(count) - 0.2;  // 零飘修正项
+                if (1 == direction_factor)
+                    position_zero_bias -= position_range;
                 count = 0;
                 ++state;
             }
@@ -60,11 +66,12 @@ void HT_Servo::position_calibration(std::shared_ptr<ros::Rate> loop_rate, std::s
         else if (SOFT_LEAVE == state)
         {
             ++count;
-            if (count > 50)
+            if (count > 100)
             {
+                set_position(0, 50);
                 break;  // 校准完成，退出循环
             }
-            control_val = pid.step(-0.2 - diff_angular_velocity);
+            control_val = pid.step(( - direction_factor * CALIBRATION_VELOCITY) - diff_angular_velocity);
             set_power(control_val, 500);
         }
         request(HT_Command::STATE, 50);
@@ -87,7 +94,7 @@ bool HT_Servo::set_position_origin(void)
 
 void HT_Servo::request(HT_Command command, uint16_t wait_response_ms)
 {
-    uint32_t can_id = static_cast<uint32_t>(command)<<4 | id;
+    uint32_t can_id = get_can_id(command);
     uint8_t data[0];
     can_bus->send(can_id, 0, data);
 
@@ -97,7 +104,8 @@ void HT_Servo::request(HT_Command command, uint16_t wait_response_ms)
 
 void HT_Servo::set_power(int16_t power, uint16_t wait_response_ms)
 {
-    uint32_t can_id = static_cast<uint32_t>(HT_Command::SET_POWER)<<4 | id;
+    uint32_t can_id = get_can_id(HT_Command::SET_POWER);
+    power *= inverse_factor;
     uint8_t data[2];
     data[0] = power & 0XFF;
     data[1] = (power >> 8) & 0XFF;
@@ -109,8 +117,9 @@ void HT_Servo::set_power(int16_t power, uint16_t wait_response_ms)
 
 void HT_Servo::set_velocity(double rads, uint16_t wait_response_ms)
 {
+    rads *= inverse_factor;
     int16_t rpm = static_cast<int16_t>((rads / RPM2RADS) * 10.0 * gear_ratio);
-    uint32_t can_id = static_cast<uint32_t>(HT_Command::SET_VELOCITY)<<4 | id;
+    uint32_t can_id = get_can_id(HT_Command::SET_VELOCITY);
     uint8_t data[2];
     data[0] = rpm & 0XFF;
     data[1] = (rpm >> 8) & 0XFF;
@@ -122,7 +131,19 @@ void HT_Servo::set_velocity(double rads, uint16_t wait_response_ms)
 
 void HT_Servo::set_position(double degree, uint16_t wait_response_ms)
 {
-    
+    degree = degree + position_zero_bias + (position_range / 2);
+    degree *= inverse_factor;
+    uint32_t position = static_cast<uint32_t>(degree * 16384.0 * gear_ratio / 360);
+    uint32_t can_id = get_can_id(HT_Command::SET_ABSOLUTE_POSITION);
+    uint8_t data[4];
+    data[0] = position & 0XFF;
+    data[1] = (position >> 8) & 0XFF;
+    data[2] = (position >> 16) & 0XFF;
+    data[3] = (position >> 24) & 0XFF;
+    can_bus->send(can_id, 4, data);
+
+    if (wait_response_ms != 0)
+        wait_response_block(wait_response_ms);
 }
 
 
@@ -151,9 +172,9 @@ void HT_Servo::reception_callback(const CAN::FrameStamp& frame_stamp)
         original_position = static_cast<int32_t>(frame_stamp.frame.data[5] << 24 |
                  frame_stamp.frame.data[4] << 16 |
                  frame_stamp.frame.data[3] << 8 |
-                 frame_stamp.frame.data[2]) * 360.0 / 16384.0 / gear_ratio;
+                 frame_stamp.frame.data[2]) * 360.0 / 16384.0 * inverse_factor / gear_ratio;
         // 单位 rad/s
-        angular_velocity = static_cast<int16_t>(frame_stamp.frame.data[7] << 8 | frame_stamp.frame.data[6]) * 0.1 * RPM2RADS / gear_ratio;
+        angular_velocity = static_cast<int16_t>(frame_stamp.frame.data[7] << 8 | frame_stamp.frame.data[6]) * 0.1 * RPM2RADS * inverse_factor / gear_ratio;
 
         // 后向差分计算速度
         current_position.value = original_position;
