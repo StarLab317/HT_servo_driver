@@ -3,12 +3,14 @@
 #include "geometry_msgs/Quaternion.h"
 
 HT_Servo::HT_Servo(int _id, double _gear_ratio, double _position_range, std::shared_ptr<CAN::CanBus> _can_bus, bool inverse):
-    id(_id), gear_ratio(_gear_ratio), position_range(_position_range), can_bus(_can_bus), inverse_factor(inverse? -1 : 1)
+    id(_id), gear_ratio(_gear_ratio), position_range(_position_range), can_bus(_can_bus), inverse_factor(inverse? -1 : 1),
+    position_range_half(_position_range / 2)
 {
     can_bus->add_device(id, this);
 }
 
-void HT_Servo::position_calibration(std::shared_ptr<ros::Rate> loop_rate, std::shared_ptr<ros::Publisher> publisher, int direction)
+void HT_Servo::position_calibration(std::shared_ptr<ros::Rate> loop_rate, std::shared_ptr<ros::Publisher> publisher, 
+    int direction, double max_energy, double initial_position)
 {
     constexpr uint8_t SEARCH_ZERO = 0;
     constexpr uint8_t DATA_SAMPE = 1;
@@ -17,6 +19,8 @@ void HT_Servo::position_calibration(std::shared_ptr<ros::Rate> loop_rate, std::s
     uint8_t count = 0;
     double position_avg = 0;
     geometry_msgs::Quaternion pub_data;
+
+    pid.set_parameter(-max_energy, max_energy);
 
     double direction_factor = -1;
     if (direction >= 0)
@@ -56,7 +60,7 @@ void HT_Servo::position_calibration(std::shared_ptr<ros::Rate> loop_rate, std::s
             ++count;
             if (count >= 40)
             {
-                position_zero_bias = position_avg / static_cast<double>(count) - 0.2;  // 零飘修正项
+                position_zero_bias = position_avg / static_cast<double>(count) - 0.0;  // 零飘修正项
                 if (1 == direction_factor)
                     position_zero_bias -= position_range;
                 count = 0;
@@ -68,7 +72,7 @@ void HT_Servo::position_calibration(std::shared_ptr<ros::Rate> loop_rate, std::s
             ++count;
             if (count > 100)
             {
-                set_position(0, 50);
+                set_position(initial_position, 50);
                 break;  // 校准完成，退出循环
             }
             control_val = pid.step(( - direction_factor * CALIBRATION_VELOCITY) - diff_angular_velocity);
@@ -131,7 +135,12 @@ void HT_Servo::set_velocity(double rads, uint16_t wait_response_ms)
 
 void HT_Servo::set_position(double degree, uint16_t wait_response_ms)
 {
-    degree = degree + position_zero_bias + (position_range / 2);
+    if (degree > position_range_half - POSITION_DANGER_ZONE)
+        degree = position_range_half - POSITION_DANGER_ZONE;
+    else if (degree < -(position_range_half - POSITION_DANGER_ZONE))
+        degree = -(position_range_half - POSITION_DANGER_ZONE);
+
+    degree = degree + position_zero_bias + (position_range_half);
     degree *= inverse_factor;
     uint32_t position = static_cast<uint32_t>(degree * 16384.0 * gear_ratio / 360);
     uint32_t can_id = get_can_id(HT_Command::SET_ABSOLUTE_POSITION);

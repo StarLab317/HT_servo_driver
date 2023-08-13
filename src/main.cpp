@@ -24,7 +24,8 @@ int main(int argc, char **argv)
 
     std::shared_ptr<CAN::CanBus> can_bus = std::make_shared<CAN::CanBus>("can0", 50);
 
-    std::shared_ptr<HT_Servo> servo_3 = std::make_shared<HT_Servo>(3, 10, 240.12, can_bus, true);
+    // std::shared_ptr<HT_Servo> servo_3 = std::make_shared<HT_Servo>(3, 10, 240.12, can_bus, true);
+    std::shared_ptr<HT_Servo> servo_3 = std::make_shared<HT_Servo>(4, 10, 334.73, can_bus, true);
 
     PID_Controller servo_3_pid(3, 1.5, 0.0, -5000, 5000);
     ButterworthFilter servo_3_velocity_filter(50.0, 10.0);

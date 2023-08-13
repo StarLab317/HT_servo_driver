@@ -64,6 +64,12 @@ class PID_Controller
             differential_filter.set_filter_alpha(_differential_filter_alpha);
         }
 
+        void set_parameter(double _output_min, double _output_max)
+        {
+            output_min = _output_min;
+            output_max = _output_max;
+        }
+
         void reset(void)
         {
             integral_val = 0;

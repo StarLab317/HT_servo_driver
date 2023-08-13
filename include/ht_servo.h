@@ -33,7 +33,8 @@ class HT_Servo: protected CAN::Receiver
     public:
 
         HT_Servo(int _id, double _gear_ratio, double _position_range, std::shared_ptr<CAN::CanBus> _can_bus, bool inverse = false);
-        void position_calibration(std::shared_ptr<ros::Rate> loop_rate, std::shared_ptr<ros::Publisher> publisher, int direction = -1);
+        void position_calibration(std::shared_ptr<ros::Rate> loop_rate, std::shared_ptr<ros::Publisher> publisher, 
+            int direction = -1, double max_energy = 2000, double initial_position = 0);
         bool set_position_origin(void);
         void request(HT_Command command, uint16_t wait_response_ms = 0);
         void set_power(int16_t power, uint16_t wait_response_ms = 0);
@@ -42,7 +43,7 @@ class HT_Servo: protected CAN::Receiver
 
         double get_position(void)
         {
-            return original_position - position_zero_bias - (position_range / 2);
+            return original_position - position_zero_bias - position_range_half;
         }
         double get_velocity(void)
         {
@@ -62,9 +63,12 @@ class HT_Servo: protected CAN::Receiver
 
     private:
 
+        const double POSITION_DANGER_ZONE = 3;
+
         const int id;
         const double gear_ratio;
         const double position_range;
+        const double position_range_half;
         const std::shared_ptr<CAN::CanBus> can_bus;
         const double inverse_factor;
 
