@@ -10,7 +10,7 @@ HT_Servo::HT_Servo(int _id, double _gear_ratio, double _position_range, std::sha
 }
 
 void HT_Servo::position_calibration(std::shared_ptr<ros::Rate> loop_rate, std::shared_ptr<ros::Publisher> publisher, 
-    int direction, double max_energy, double initial_position)
+    int direction, double initial_position, double max_energy)
 {
     constexpr uint8_t SEARCH_ZERO = 0;
     constexpr uint8_t DATA_SAMPE = 1;
@@ -43,7 +43,7 @@ void HT_Servo::position_calibration(std::shared_ptr<ros::Rate> loop_rate, std::s
                 //     if (count > 5)
                 //         throw "Unable to set origin";
                 // }
-                pid.reset();
+                // pid.reset();
                 count = 0;
                 ++state;
             }
@@ -70,7 +70,7 @@ void HT_Servo::position_calibration(std::shared_ptr<ros::Rate> loop_rate, std::s
         else if (SOFT_LEAVE == state)
         {
             ++count;
-            if (count > 100)
+            if (count > 50)
             {
                 set_position(initial_position, 50);
                 break;  // 校准完成，退出循环
@@ -142,6 +142,7 @@ void HT_Servo::set_position(double degree, uint16_t wait_response_ms)
 
     degree = degree + position_zero_bias + (position_range_half);
     degree *= inverse_factor;
+    position_target = degree;
     uint32_t position = static_cast<uint32_t>(degree * 16384.0 * gear_ratio / 360);
     uint32_t can_id = get_can_id(HT_Command::SET_ABSOLUTE_POSITION);
     uint8_t data[4];
