@@ -62,7 +62,7 @@ class HT_Servo: protected CAN::Receiver
             return abs(position_target - get_position()) < deadband;
         }
 
-        PID_Controller pid = PID_Controller(400, 25, 0, -2000, 2000);
+        PID_Controller pid = PID_Controller(400, 1000, 0, -2000, 2000, 50);
         ButterworthFilter velocity_filter = ButterworthFilter(50.0, 15.0);
 
     private:

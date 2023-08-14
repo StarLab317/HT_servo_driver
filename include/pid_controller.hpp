@@ -1,38 +1,49 @@
 #ifndef PPC_PID_CONTROLLER_H
 #define PPC_PID_CONTROLLER_H
 
+#include <chrono>
 #include "filter.hpp"
 
 class PID_Controller
 {
     public:
         PID_Controller(double _Kp, double _Ki, double _Kd, double _output_min, double _output_max,
-            double _differential_filter_alpha = 1.0):
+            double _frequency, double _differential_filter_alpha = 1.0):
                 Kp(_Kp), Ki(_Ki), Kd(_Kd), output_min(_output_min), output_max(_output_max), 
-                differential_filter(_differential_filter_alpha) {}
+                sample_time(1.0 / _frequency), differential_filter(_differential_filter_alpha) {}
         
-        double step(double input_bias)
+        double step(const double input_bias, const std::chrono::steady_clock::time_point& time_stamp)
         {
             double differential_val = 0;
             double output = 0;
 
-            // ANTI-Windup
-            if (integral_val < output_min)
+            double duration = abs(std::chrono::duration_cast<std::chrono::nanoseconds>(time_stamp - last_stamp).count() / 1e9);
+            last_stamp = time_stamp;
+            if (duration > sample_time * 2.0)
             {
-                is_saturated_flag = true;
-                if (input_bias > 0)
-                    integral_val += input_bias * Ki;
+                duration = sample_time * 2.0;
+                std::cout << "[WARNING] Call duration does not match the sampling time" << std::endl;
             }
-            else if (integral_val > output_max)
+
+            // ANTI-Windup
+            if (integral_val <= output_min)
             {
                 is_saturated_flag = true;
+                integral_val = output_min;  // 积分限幅
+                if (input_bias > 0)
+                    integral_val += input_bias * Ki * duration;
+            }
+            else if (integral_val >= output_max)
+            {
+                is_saturated_flag = true;
+                integral_val = output_max;  // 积分限幅
                 if (input_bias < 0)
-                    integral_val += input_bias * Ki;
+                    integral_val += input_bias * Ki * duration;
             }
             else
             {
                 is_saturated_flag = false;
-                integral_val += input_bias * Ki;
+                integral_val += input_bias * Ki * duration;
             }
             
             differential_val = differential_filter.step(input_bias - last_bias);
@@ -53,21 +64,23 @@ class PID_Controller
             return is_saturated_flag;
         }
 
-        void set_parameter(double _Kp, double _Ki, double _Kd, double _output_min, double _output_max,
-            double _differential_filter_alpha = 1.0)
+        void set_parameter(double _Kp, double _Ki, double _Kd, double _differential_filter_alpha = 1.0)
         {
             Kp = _Kp;
             Ki = _Ki;
             Kd = _Kd;
-            output_min = _output_min;
-            output_max = _output_max;
             differential_filter.set_filter_alpha(_differential_filter_alpha);
         }
 
-        void set_parameter(double _output_min, double _output_max)
+        void set_limit(double _output_min, double _output_max)
         {
             output_min = _output_min;
             output_max = _output_max;
+        }
+
+        void set_frequency(double _frequency)
+        {
+            sample_time = 1.0 / _frequency;
         }
 
         void reset(void)
@@ -84,9 +97,12 @@ class PID_Controller
         double Kd = 0;
         double output_min = 0;
         double output_max = 0;
+        double sample_time = 0;
 
         double integral_val = 0;
         double last_bias = 0;
+
+        std::chrono::steady_clock::time_point last_stamp = std::chrono::steady_clock::now();
 
         bool is_saturated_flag = false;
 

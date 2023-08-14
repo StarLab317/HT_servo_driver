@@ -25,19 +25,20 @@ int main(int argc, char **argv)
     std::shared_ptr<CAN::CanBus> can_bus = std::make_shared<CAN::CanBus>("can0", 50);
 
     std::shared_ptr<HT_Servo> servo_1 = std::make_shared<HT_Servo>(1, 10, 170.68, can_bus, true);
-    servo_1->pid.set_parameter(500, 40, 0, -5000, 5000);
+    servo_1->pid.set_parameter(500, 3000, 0);
+    servo_1->pid.set_limit(-8000, 8000);
     std::shared_ptr<HT_Servo> servo_2 = std::make_shared<HT_Servo>(2, 10, 334.59, can_bus, true);
     std::shared_ptr<HT_Servo> servo_3 = std::make_shared<HT_Servo>(3, 10, 240.12, can_bus, true);
     std::shared_ptr<HT_Servo> servo_4 = std::make_shared<HT_Servo>(4, 10, 334.73, can_bus, true);
 
-    PID_Controller servo_3_pid(3, 1.5, 0.0, -5000, 5000);
+    // PID_Controller servo_3_pid(3, 1.5, 0.0, -5000, 5000);
     ButterworthFilter servo_3_velocity_filter(50.0, 10.0);
     ButterworthFilter position_filter(50.0, 2.0);
 
     ros::Publisher robot_state_pub = ros_node.advertise<trajectory_msgs::JointTrajectory>("robot_state", 1);
     std::shared_ptr<ros::Publisher> rqt_data_pub = std::make_shared<ros::Publisher>(ros_node.advertise<geometry_msgs::Quaternion>("for_rqt_plot", 1));
 
-    std::shared_ptr<ros::Rate> loop_rate = std::make_shared<ros::Rate>(100);
+    std::shared_ptr<ros::Rate> loop_rate = std::make_shared<ros::Rate>(50);
 
     servo_4->position_calibration(loop_rate, rqt_data_pub, 1);
     servo_3->position_calibration(loop_rate, rqt_data_pub, 1, 45, 2500);
@@ -61,7 +62,7 @@ int main(int argc, char **argv)
 
         // std::cout << velocity_filter << std::endl;
 
-        double control_target = servo_3_pid.step(5 - servo_3_velocity);
+        // double control_target = servo_3_pid.step(5 - servo_3_velocity);
 
         geometry_msgs::Quaternion for_rqt_data;
         for_rqt_data.x = servo_1->get_velocity();
@@ -80,7 +81,6 @@ int main(int argc, char **argv)
 
         ROS_INFO("%lf\n", position_filter.step(servo_1->get_position()));
 
-        loop_rate->sleep();
         loop_rate->sleep();
     }
 

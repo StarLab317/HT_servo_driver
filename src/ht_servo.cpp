@@ -20,7 +20,7 @@ void HT_Servo::position_calibration(std::shared_ptr<ros::Rate> loop_rate, std::s
     double position_avg = 0;
     geometry_msgs::Quaternion pub_data;
 
-    pid.set_parameter(-max_energy, max_energy);
+    pid.set_limit(-max_energy, max_energy);
 
     double direction_factor = -1;
     if (direction >= 0)
@@ -34,7 +34,8 @@ void HT_Servo::position_calibration(std::shared_ptr<ros::Rate> loop_rate, std::s
     {
         if (SEARCH_ZERO == state)
         {
-            control_val = pid.step(direction_factor * CALIBRATION_VELOCITY - diff_angular_velocity);
+            control_val = pid.step(direction_factor * CALIBRATION_VELOCITY - diff_angular_velocity,
+                current_position.stamp);
             if (pid.is_saturated())
             {
                 // while (!set_position_origin())
@@ -75,7 +76,8 @@ void HT_Servo::position_calibration(std::shared_ptr<ros::Rate> loop_rate, std::s
                 set_position(initial_position, 50);
                 break;  // 校准完成，退出循环
             }
-            control_val = pid.step(( - direction_factor * CALIBRATION_VELOCITY) - diff_angular_velocity);
+            control_val = pid.step(( - direction_factor * CALIBRATION_VELOCITY) - diff_angular_velocity,
+                current_position.stamp);
             set_power(control_val, 500);
         }
         request(HT_Command::STATE, 50);
