@@ -139,10 +139,10 @@ void HT_Servo::set_position(double degree, uint16_t wait_response_ms)
         degree = position_range_half - POSITION_DANGER_ZONE;
     else if (degree < -(position_range_half - POSITION_DANGER_ZONE))
         degree = -(position_range_half - POSITION_DANGER_ZONE);
+    position_target = degree;
 
     degree = degree + position_zero_bias + (position_range_half);
     degree *= inverse_factor;
-    position_target = degree;
     uint32_t position = static_cast<uint32_t>(degree * 16384.0 * gear_ratio / 360);
     uint32_t can_id = get_can_id(HT_Command::SET_ABSOLUTE_POSITION);
     uint8_t data[4];

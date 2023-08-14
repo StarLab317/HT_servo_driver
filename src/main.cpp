@@ -40,10 +40,14 @@ int main(int argc, char **argv)
     std::shared_ptr<ros::Rate> loop_rate = std::make_shared<ros::Rate>(100);
 
     servo_4->position_calibration(loop_rate, rqt_data_pub, 1);
-    servo_3->position_calibration(loop_rate, rqt_data_pub, 1, -45);
-    while (!servo_3->is_reached_target() && ros::ok());
-    // servo_2->position_calibration(loop_rate, rqt_data_pub, 1);
-    // servo_1->position_calibration(loop_rate, rqt_data_pub, 1, 45, 8000);
+    servo_3->position_calibration(loop_rate, rqt_data_pub, 1, 45, 2500);
+    while (!servo_3->is_reached_target() && ros::ok())
+    {
+        servo_3->request(HT_Command::POSITION, 500);
+        loop_rate->sleep();
+    }
+    servo_2->position_calibration(loop_rate, rqt_data_pub, 1);
+    servo_1->position_calibration(loop_rate, rqt_data_pub, 1, 45, 8000);
 
     // servo_1->set_position(0, 500);
 
