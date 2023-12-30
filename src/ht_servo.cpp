@@ -1,10 +1,10 @@
-#include "ht_servo.h"
+#include "servo_driver/ht_servo.h"
 #include <chrono>
 #include "geometry_msgs/Quaternion.h"
 
 HT_Servo::HT_Servo(int _id, double _gear_ratio, double _position_range, std::shared_ptr<CAN::CanBus> _can_bus, bool inverse):
-    id(_id), gear_ratio(_gear_ratio), position_range(_position_range), can_bus(_can_bus), inverse_factor(inverse? -1 : 1),
-    position_range_half(_position_range / 2)
+    id(_id), gear_ratio(_gear_ratio), position_range(_position_range), position_range_half(_position_range / 2), 
+    can_bus(_can_bus), inverse_factor(inverse? -1 : 1)
 {
     can_bus->add_device(id, this);
 }
@@ -34,7 +34,7 @@ void HT_Servo::position_calibration(std::shared_ptr<ros::Rate> loop_rate, std::s
     {
         if (SEARCH_ZERO == state)
         {
-            control_val = pid.step(direction_factor * CALIBRATION_VELOCITY - diff_angular_velocity,
+            control_val = pid.step(direction_factor * CALIBRATION_VELOCITY, diff_angular_velocity,
                 current_position.stamp);
             if (pid.is_saturated())
             {
@@ -76,7 +76,7 @@ void HT_Servo::position_calibration(std::shared_ptr<ros::Rate> loop_rate, std::s
                 set_position(initial_position, 50);
                 break;  // 校准完成，退出循环
             }
-            control_val = pid.step(( - direction_factor * CALIBRATION_VELOCITY) - diff_angular_velocity,
+            control_val = pid.step(( - direction_factor * CALIBRATION_VELOCITY), diff_angular_velocity,
                 current_position.stamp);
             set_power(control_val, 500);
         }

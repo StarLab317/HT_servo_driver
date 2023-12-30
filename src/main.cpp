@@ -1,10 +1,9 @@
 #include <thread>
 #include <iostream>
 #include <chrono>
-#include "socketcan.h"
-#include "can_bus.hpp"
-#include "ht_servo.h"
-#include "pid_controller.hpp"
+#include "servo_driver/socketcan.h"
+#include "servo_driver/can_bus.hpp"
+#include "servo_driver/ht_servo.h"
 #include "ros/ros.h"
 #include "trajectory_msgs/JointTrajectory.h"
 #include "geometry_msgs/Quaternion.h"
@@ -18,7 +17,7 @@ void empty(void)
 
 int main(int argc, char **argv)
 {
-    ros::init(argc, argv, "HT_servo_driver");
+    ros::init(argc, argv, "servo_test");
 
     ros::NodeHandle ros_node;
 
@@ -40,15 +39,15 @@ int main(int argc, char **argv)
 
     std::shared_ptr<ros::Rate> loop_rate = std::make_shared<ros::Rate>(50);
 
-    servo_4->position_calibration(loop_rate, rqt_data_pub, 1);
-    servo_3->position_calibration(loop_rate, rqt_data_pub, 1, 45, 2500);
-    while (!servo_3->is_reached_target() && ros::ok())
-    {
-        servo_3->request(HT_Command::POSITION, 500);
-        loop_rate->sleep();
-    }
-    servo_2->position_calibration(loop_rate, rqt_data_pub, 1);
-    servo_1->position_calibration(loop_rate, rqt_data_pub, 1, 45, 8000);
+    // servo_4->position_calibration(loop_rate, rqt_data_pub, 1);
+    // servo_3->position_calibration(loop_rate, rqt_data_pub, 1, 45, 2500);
+    // while (!servo_3->is_reached_target() && ros::ok())
+    // {
+    //     servo_3->request(HT_Command::POSITION, 500);
+    //     loop_rate->sleep();
+    // }
+    // servo_2->position_calibration(loop_rate, rqt_data_pub, 1);
+    // servo_1->position_calibration(loop_rate, rqt_data_pub, 1, 45, 8000);
 
     // servo_1->set_position(0, 500);
 
@@ -72,14 +71,14 @@ int main(int argc, char **argv)
 
         auto start = std::chrono::steady_clock::now();
         servo_1->request(HT_Command::POSITION, 500);
-        servo_1->request(HT_Command::STATE, 50);
+        // servo_1->request(HT_Command::STATE, 50);
         auto end = std::chrono::steady_clock::now();
 
-        // cout << "Elapsed time in microseconds: "
-        //     << chrono::duration_cast<chrono::microseconds>(end - start).count()
-        //     << " µs" << endl;
+        cout << "Elapsed time in microseconds: "
+            << chrono::duration_cast<chrono::microseconds>(end - start).count()
+            << " µs" << endl;
 
-        ROS_INFO("%lf\n", position_filter.step(servo_1->get_position()));
+        // ROS_INFO("%lf\n", position_filter.step(servo_1->get_position()));
 
         loop_rate->sleep();
     }

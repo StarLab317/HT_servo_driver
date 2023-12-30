@@ -3,12 +3,8 @@
 
 #include <memory>
 #include <chrono>
-#include "can_bus.hpp"
-#include "pid_controller.hpp"
-
-constexpr double DEG2RAD = 0.017453293;
-constexpr double RPM2RADS = 0.104719755;
-constexpr double CALIBRATION_VELOCITY = 0.3;
+#include "servo_driver/can_bus.hpp"
+#include "servo_driver/pid_controller.hpp"
 
 enum class HT_Command
 {
@@ -31,6 +27,11 @@ struct PositionStamp
 class HT_Servo: protected CAN::Receiver
 {
     public:
+
+        static constexpr double DEG2RAD = 0.017453293;
+        static constexpr double RPM2RADS = 0.104719755;
+        static constexpr double CALIBRATION_VELOCITY = 0.3;
+        static constexpr double POSITION_DANGER_ZONE = 3;
 
         HT_Servo(int _id, double _gear_ratio, double _position_range, std::shared_ptr<CAN::CanBus> _can_bus, bool inverse = false);
         void position_calibration(std::shared_ptr<ros::Rate> loop_rate, std::shared_ptr<ros::Publisher> publisher, 
@@ -62,12 +63,10 @@ class HT_Servo: protected CAN::Receiver
             return abs(position_target - get_position()) < deadband;
         }
 
-        PID_Controller pid = PID_Controller(400, 1000, 0, -2000, 2000, 50);
+        PID_Controller<true> pid = PID_Controller<true>(400, 1000, 0, -2000, 2000, 0.02);
         ButterworthFilter velocity_filter = ButterworthFilter(50.0, 15.0);
 
     private:
-
-        const double POSITION_DANGER_ZONE = 3;
 
         const int id;
         const double gear_ratio;

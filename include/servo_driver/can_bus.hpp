@@ -5,14 +5,14 @@
 #include <memory>
 #include <mutex>
 #include <chrono>
-#include "socketcan.h"
+#include "servo_driver/socketcan.h"
 #include "ros/ros.h"
 
 namespace CAN
 {
 
-#define ADDRESS_MASK 0X0F
-#define ADDRESS_MAX 0XFFFF
+#define DEVICE_ADDRESS_MASK 0X0F
+#define DEVICE_ADDRESS_MAX 0XFFFF
 
 struct FrameStamp
 {
@@ -87,7 +87,7 @@ class CanBus
         void frame_callback(const can_frame& frame)
         {
             std::lock_guard<std::mutex> guard(mutex_);
-            uint8_t device_id = frame.can_id & ADDRESS_MASK;
+            uint8_t device_id = frame.can_id & DEVICE_ADDRESS_MASK;
             FrameStamp can_frame_stamp{ .frame = frame, .stamp = std::chrono::steady_clock::now() };
             device_list[device_list_map[device_id - 1]]->reception_callback(can_frame_stamp);  // 调用对应地址的设备的回调函数
         }
