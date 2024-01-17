@@ -68,7 +68,7 @@ class _D_ModuleBase
 
         double step(const double input_bias, const double sample_time)
         {
-            const double differential_val = _differential_filter.step((input_bias - _last_input) / sample_time);
+            const double differential_val = _Kd * _differential_filter.step((input_bias - _last_input) / sample_time);
             _last_input = input_bias;
             return differential_val;
         }

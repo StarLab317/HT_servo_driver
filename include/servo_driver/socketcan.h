@@ -5,6 +5,7 @@
 #include <net/if.h>
 #include <pthread.h>
 #include <functional>
+#include <string>
 
 namespace CAN
 {
